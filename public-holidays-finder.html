@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Public Holidays Finder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap 5 CSS (Free & Open Source) -->
+  <!-- Bootstrap 5 CSS (Italiano: CSS di Bootstrap 5, gratis e open source) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    /* Global styles - Stili globali */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    /* Wrapper for full page layout - Contenitore per l'intera pagina */
+    .wrapper {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Content area - Area del contenuto */
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+    /* Header & Footer - Intestazione e Piè di pagina */
+    header, footer {
+      background-color: #333;
+      color: #fff;
+      padding: 15px;
+      text-align: center;
+    }
+    .container-main {
+      max-width: 960px;
+      margin: auto;
+      padding: 15px;
+    }
+    /* Form Controls - Controlli del modulo */
+    .form-label {
+      font-weight: bold;
+    }
+    .form-control, .btn {
+      margin-top: 10px;
+    }
+    /* Table styles - Stili della tabella dei risultati */
+    table {
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body class="day">
+  <header>
+    <h1>Public Holidays Finder</h1> 
+    <!-- Header title (Italiano: Titolo Intestazione) -->
+  </header>
+
+  <div class="container-main">
+    <!-- Input form: Year and Country Code - Modulo per inserire anno e codice paese -->
+    <div class="row">
+      <div class="col-md-6">
+        <label for="yearInput" class="form-label">Year</label>
+        <!-- Year input (Italiano: Inserisci l'anno) -->
+        <input type="number" id="yearInput" class="form-control" value="2023">
+      </div>
+      <div class="col-md-6">
+        <label for="countryInput" class="form-label">Country Code (ISO 3166-1 α-2)</label>
+        <!-- Country code input (Italiano: Inserisci il codice del paese, es. US, IT, DE) -->
+        <input type="text" id="countryInput" class="form-control" placeholder="e.g., US, IT, DE" value="US">
+      </div>
+    </div>
+    <div class="row">
+      <div class="col text-center">
+        <!-- Get Holidays button (Italiano: Pulsante per ottenere festività) -->
+        <button id="btnGetHolidays" class="btn btn-primary mt-3">Get Holidays</button>
+      </div>
+    </div>
+
+    <!-- Results container - Contenitore per i risultati -->
+    <div id="results" class="mt-4"></div>
+  </div>
+
+  <footer>
+    <p>Created by Bocaletto Luca © <span id="currentYearFooter"></span></p>
+  </footer>
+
+  <!-- Fullscreen Modal for Details - Modal a schermo intero per i dettagli -->
+  <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <!-- Modal title (Italiano: Titolo del modal) -->
+          <h5 class="modal-title" id="detailModalLabel">Holiday Details</h5>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+        <!-- Modal body for detailed information - Corpo del modal per dettagli -->
+        <div class="modal-body" id="modalDetailContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle JS (includes Popper.js) - Script di Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Main Script - Script principale -->
+  <script>
+    // Update footer year - Aggiorna l'anno nel piè di pagina
+    document.getElementById("currentYearFooter").textContent = new Date().getFullYear();
+
+    // Event listener for the "Get Holidays" button - Gestisce il click su "Get Holidays"
+    document.getElementById("btnGetHolidays").addEventListener("click", async function() {
+      const year = document.getElementById("yearInput").value.trim(); // Ottieni l'anno / Get the year
+      const country = document.getElementById("countryInput").value.trim().toUpperCase(); // Ottieni e converte il codice paese / Get and uppercase country code
+      if (!year || !country) {
+        alert("Please enter both year and country code."); // Controllo degli input / Input validation
+        return;
+      }
+      const resultsDiv = document.getElementById("results");
+      resultsDiv.innerHTML = "<p>Loading...</p>"; // Messaggio di caricamento / Loading message
+      try {
+        // API call to Nager.Date API v3 - Chiamata all'API Nager.Date v3
+        const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country}`);
+        if (!response.ok) {
+          throw new Error("API error: " + response.status);
+        }
+        const holidays = await response.json();
+        if (!holidays || holidays.length === 0) {
+          resultsDiv.innerHTML = "<p>No public holidays found for the provided country and year.</p>";
+          return;
+        }
+        displayHolidays(holidays);
+      } catch (error) {
+        console.error(error);
+        resultsDiv.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+      }
+    });
+
+    // Function to display holiday results in a table - Funzione per mostrare i risultati in una tabella
+    function displayHolidays(holidays) {
+      let html = `
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Local Name</th>
+              <th>English Name</th>
+              <th>Types</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      holidays.forEach(holiday => {
+        // The API returns holiday.types as an array (if available) - L'API restituisce holiday.types come array (se disponibile)
+        const types = holiday.types ? holiday.types.join(", ") : "";
+        html += `
+          <tr>
+            <td>${holiday.date}</td>
+            <td>${holiday.localName}</td>
+            <td>${holiday.name}</td>
+            <td>${types}</td>
+            <td><button class="btn btn-sm btn-info" onclick="showDetail('${holiday.date}', '${holiday.localName}', '${holiday.name}', '${types}')">View Details</button></td>
+          </tr>
+        `;
+      });
+      html += `
+          </tbody>
+        </table>
+      `;
+      document.getElementById("results").innerHTML = html;
+    }
+
+    // Function to show holiday details in a fullscreen modal - Funzione per mostrare i dettagli nel modal a schermo intero
+    function showDetail(date, localName, name, types) {
+      // Build the modal content - Costruisci il contenuto del modal
+      // Use loremflickr to get a dynamic holiday-themed image using the date as a seed to get varying images.
+      // Usiamo loremflickr e il parametro "lock" basato sulla data per ottenere immagini differenti.
+      const imageUrl = "https://loremflickr.com/640/480/holiday?lock=" + encodeURIComponent(date);
+      const content = `
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-md-5">
+              <img src="${imageUrl}" alt="Holiday Image" class="img-fluid" style="object-fit:cover;">
+            </div>
+            <div class="col-md-7">
+              <h2>${name}</h2>
+              <p><strong>Date:</strong> ${date}</p>
+              <p><strong>Local Name:</strong> ${localName}</p>
+              <p><strong>Types:</strong> ${types}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      // Set modal content and show modal - Imposta il contenuto del modal e aprilo
+      document.getElementById("modalDetailContent").innerHTML = content;
+      const modalElem = document.getElementById("detailModal");
+      const modal = new bootstrap.Modal(modalElem, { backdrop: "static" });
+      modal.show();
+    }
+  </script>
+</body>
+</html>
