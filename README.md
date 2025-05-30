@@ -16,13 +16,6 @@ Un'applicazione web gratuita e open source che recupera i giorni festivi di qual
 ## Table of Contents / Indice
 
 - [Features](#features)
-- [Demo](#demo)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Technologies](#technologies)
-- [Contributing](#contributing)
-- [License](#license)
-- [About the Author](#about-the-author)
 
 ---
 
